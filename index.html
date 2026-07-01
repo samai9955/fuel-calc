@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json">
 <title>คำนวณน้ำมัน</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
     --bg1:#0f172a;
@@ -177,6 +178,145 @@
     margin-top:10px;
     display:none;
   }
+  .map-btn{
+    width:100%;
+    margin-top:8px;
+    padding:11px;
+    border-radius:12px;
+    border:1px dashed var(--accent2);
+    background:rgba(56,189,248,.08);
+    color:var(--accent2);
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .map-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:1000;
+  }
+  .map-modal.open{display:flex;}
+  .map-modal-inner{
+    width:100%;
+    max-width:480px;
+    max-height:92vh;
+    overflow-y:auto;
+    background:var(--bg2);
+    border-radius:20px 20px 0 0;
+    padding:16px;
+    border:1px solid var(--border);
+  }
+  .map-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .map-header strong{font-size:15px;}
+  .icon-btn{
+    width:32px;height:32px;
+    border-radius:50%;
+    border:none;
+    background:#334155;
+    color:var(--text);
+    font-size:16px;
+    cursor:pointer;
+  }
+  .map-points{
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .point-btn{
+    flex:1;
+    text-align:left;
+    padding:9px 10px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:var(--input-bg);
+    color:var(--muted);
+    font-size:12px;
+    cursor:pointer;
+  }
+  .point-btn.active{
+    border-color:var(--accent2);
+    color:var(--text);
+  }
+  .map-search-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .map-search-row input{
+    flex:1;
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    color:var(--text);
+    padding:9px 10px;
+    font-size:14px;
+    outline:none;
+    min-width:0;
+  }
+  .map-search-row button{
+    padding:9px 14px;
+    border-radius:10px;
+    border:none;
+    background:var(--accent2);
+    color:#0f172a;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .secondary-btn{
+    width:100%;
+    padding:9px;
+    margin-bottom:10px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .leaflet-map{
+    width:100%;
+    height:280px;
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:10px;
+  }
+  .map-distance-result{
+    text-align:center;
+    font-size:14px;
+    color:var(--muted);
+    margin-bottom:10px;
+    min-height:20px;
+  }
+  .map-distance-result strong{
+    color:var(--accent);
+    font-size:18px;
+  }
+  .apply-btn{
+    width:100%;
+    padding:13px;
+    border-radius:12px;
+    border:none;
+    background:var(--accent);
+    color:#052e1c;
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .apply-btn:disabled{
+    background:#334155;
+    color:var(--muted);
+    cursor:not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -199,6 +339,7 @@
         <input type="number" id="distance" value="100" min="0" step="1" inputmode="decimal">
         <div class="stepper"><button data-target="distance" data-step="10">+</button></div>
       </div>
+      <button type="button" id="openMapBtn" class="map-btn">📍 เลือกระยะทางจากแผนที่</button>
     </div>
 
     <div class="field">
@@ -241,6 +382,28 @@
   <p class="footer-note">กด "เพิ่มลงหน้าจอหลัก" จากเมนูเบราว์เซอร์ เพื่อใช้งานเหมือนแอป</p>
 </div>
 
+<div class="map-modal" id="mapModal">
+  <div class="map-modal-inner">
+    <div class="map-header">
+      <strong>เลือกจุดเริ่มต้น–ปลายทาง</strong>
+      <button type="button" class="icon-btn" id="closeMapBtn">✕</button>
+    </div>
+    <div class="map-points">
+      <button type="button" class="point-btn active" id="pointABtn" data-point="A">📍 A: แตะบนแผนที่</button>
+      <button type="button" class="point-btn" id="pointBBtn" data-point="B">🏁 B: แตะบนแผนที่</button>
+    </div>
+    <div class="map-search-row">
+      <input type="text" id="mapSearchInput" placeholder="ค้นหาสถานที่...">
+      <button type="button" id="mapSearchBtn">ค้นหา</button>
+    </div>
+    <button type="button" class="secondary-btn" id="useMyLocationBtn">📡 ใช้ตำแหน่งปัจจุบันเป็นจุด A</button>
+    <div class="leaflet-map" id="leafletMap"></div>
+    <div class="map-distance-result" id="mapDistanceResult"></div>
+    <button type="button" class="apply-btn" id="applyDistanceBtn" disabled>ใช้ระยะทางนี้</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const distanceEl = document.getElementById('distance');
 const efficiencyEl = document.getElementById('efficiency');
@@ -336,6 +499,144 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
+
+// ---- Map distance picker (Leaflet + OpenStreetMap, free / no API key) ----
+const mapModal = document.getElementById('mapModal');
+const openMapBtn = document.getElementById('openMapBtn');
+const closeMapBtn = document.getElementById('closeMapBtn');
+const pointABtn = document.getElementById('pointABtn');
+const pointBBtn = document.getElementById('pointBBtn');
+const mapSearchInput = document.getElementById('mapSearchInput');
+const mapSearchBtn = document.getElementById('mapSearchBtn');
+const useMyLocationBtn = document.getElementById('useMyLocationBtn');
+const mapDistanceResult = document.getElementById('mapDistanceResult');
+const applyDistanceBtn = document.getElementById('applyDistanceBtn');
+
+let leafletMap = null;
+let markerA = null, markerB = null;
+let pointA = null, pointB = null;
+let activePoint = 'A';
+let routeLine = null;
+let routeKm = null;
+
+function ensureMap(){
+  if(leafletMap) return;
+  leafletMap = L.map('leafletMap').setView([13.7563, 100.5018], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(leafletMap);
+  leafletMap.on('click', (e) => setPoint(activePoint, e.latlng.lat, e.latlng.lng));
+}
+
+function setActivePoint(p){
+  activePoint = p;
+  pointABtn.classList.toggle('active', p === 'A');
+  pointBBtn.classList.toggle('active', p === 'B');
+}
+
+function setPoint(which, lat, lon, label){
+  const latlng = [lat, lon];
+  const text = label || (lat.toFixed(5) + ', ' + lon.toFixed(5));
+  if(which === 'A'){
+    pointA = { lat, lon };
+    if(markerA) markerA.setLatLng(latlng); else markerA = L.marker(latlng, {title:'A'}).addTo(leafletMap);
+    pointABtn.textContent = '📍 A: ' + text;
+    setActivePoint('B');
+  } else {
+    pointB = { lat, lon };
+    if(markerB) markerB.setLatLng(latlng); else markerB = L.marker(latlng, {title:'B'}).addTo(leafletMap);
+    pointBBtn.textContent = '🏁 B: ' + text;
+  }
+  leafletMap.panTo(latlng);
+  if(pointA && pointB) calcRoute();
+}
+
+async function calcRoute(){
+  mapDistanceResult.textContent = 'กำลังคำนวณระยะทาง...';
+  applyDistanceBtn.disabled = true;
+  routeKm = null;
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${pointA.lon},${pointA.lat};${pointB.lon},${pointB.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.code !== 'Ok' || !data.routes || !data.routes.length){
+      mapDistanceResult.textContent = 'ไม่พบเส้นทางระหว่างสองจุดนี้';
+      return;
+    }
+    const meters = data.routes[0].distance;
+    routeKm = meters / 1000;
+    mapDistanceResult.innerHTML = 'ระยะทางตามถนน: <strong>' + fmt(routeKm, 1) + ' กม.</strong>';
+    applyDistanceBtn.disabled = false;
+
+    if(routeLine) leafletMap.removeLayer(routeLine);
+    const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    routeLine = L.polyline(coords, { color: '#38bdf8', weight: 4 }).addTo(leafletMap);
+    leafletMap.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
+  } catch(err){
+    mapDistanceResult.textContent = 'คำนวณระยะทางไม่ได้ ลองใหม่อีกครั้ง';
+  }
+}
+
+async function geocode(query){
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'th' } });
+  const results = await res.json();
+  return results[0] || null;
+}
+
+openMapBtn.addEventListener('click', () => {
+  mapModal.classList.add('open');
+  ensureMap();
+  setTimeout(() => leafletMap.invalidateSize(), 50);
+});
+
+closeMapBtn.addEventListener('click', () => mapModal.classList.remove('open'));
+
+pointABtn.addEventListener('click', () => setActivePoint('A'));
+pointBBtn.addEventListener('click', () => setActivePoint('B'));
+
+mapSearchBtn.addEventListener('click', async () => {
+  const q = mapSearchInput.value.trim();
+  if(!q) return;
+  mapSearchBtn.disabled = true;
+  mapSearchBtn.textContent = '...';
+  const place = await geocode(q);
+  mapSearchBtn.disabled = false;
+  mapSearchBtn.textContent = 'ค้นหา';
+  if(!place){
+    mapDistanceResult.textContent = 'ไม่พบสถานที่ที่ค้นหา';
+    return;
+  }
+  setPoint(activePoint, parseFloat(place.lat), parseFloat(place.lon), place.display_name.split(',')[0]);
+});
+
+mapSearchInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') mapSearchBtn.click();
+});
+
+useMyLocationBtn.addEventListener('click', () => {
+  if(!navigator.geolocation){
+    mapDistanceResult.textContent = 'อุปกรณ์นี้ไม่รองรับการหาตำแหน่ง';
+    return;
+  }
+  useMyLocationBtn.textContent = 'กำลังหาตำแหน่ง...';
+  navigator.geolocation.getCurrentPosition((pos) => {
+    useMyLocationBtn.textContent = '📡 ใช้ตำแหน่งปัจจุบันเป็นจุด A';
+    setPoint('A', pos.coords.latitude, pos.coords.longitude, 'ตำแหน่งปัจจุบัน');
+    leafletMap.setView([pos.coords.latitude, pos.coords.longitude], 13);
+  }, () => {
+    useMyLocationBtn.textContent = '📡 ใช้ตำแหน่งปัจจุบันเป็นจุด A';
+    mapDistanceResult.textContent = 'ไม่สามารถเข้าถึงตำแหน่งได้ (โปรดอนุญาตสิทธิ์ตำแหน่ง)';
+  });
+});
+
+applyDistanceBtn.addEventListener('click', () => {
+  if(routeKm == null) return;
+  distanceEl.value = Math.round(routeKm * 100) / 100;
+  calculate();
+  mapModal.classList.remove('open');
+});
 </script>
 </body>
 </html>

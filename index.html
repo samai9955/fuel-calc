@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>คำนวณน้ำมัน</title>
+<style>
+  :root{
+    --bg1:#0f172a;
+    --bg2:#1e293b;
+    --card:#1e293b;
+    --accent:#22c55e;
+    --accent2:#38bdf8;
+    --text:#f1f5f9;
+    --muted:#94a3b8;
+    --danger:#f87171;
+    --input-bg:#0f172a;
+    --border:#334155;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Segoe UI",Tahoma,"Noto Sans Thai",sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#111827);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:env(safe-area-inset-top,0) 0 24px 0;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+    padding:20px 18px 40px;
+  }
+  header{
+    text-align:center;
+    margin-bottom:18px;
+  }
+  header h1{
+    font-size:22px;
+    margin:0 0 4px;
+    letter-spacing:.3px;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+  }
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  label .unit{color:var(--accent2); font-weight:600;}
+  .input-row{
+    display:flex;
+    align-items:center;
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:2px 4px;
+  }
+  .input-row input[type=number]{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-size:20px;
+    font-weight:600;
+    padding:12px 8px;
+    width:100%;
+    min-width:0;
+  }
+  .stepper{
+    display:flex;
+    gap:4px;
+  }
+  .stepper button{
+    width:34px;
+    height:34px;
+    border-radius:8px;
+    border:none;
+    background:#334155;
+    color:var(--text);
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .stepper button:active{background:#475569;}
+  .mode-toggle{
+    display:flex;
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:3px;
+    margin-bottom:14px;
+  }
+  .mode-toggle button{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    padding:9px 6px;
+    font-size:13px;
+    border-radius:9px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .mode-toggle button.active{
+    background:var(--accent2);
+    color:#0f172a;
+  }
+  .result-card{
+    background:linear-gradient(135deg,#052e1c,#0f3d2a);
+    border:1px solid #14532d;
+  }
+  .result-main{
+    text-align:center;
+    padding:6px 0 14px;
+  }
+  .result-main .big{
+    font-size:40px;
+    font-weight:800;
+    color:var(--accent);
+    line-height:1.1;
+  }
+  .result-main .big small{
+    font-size:16px;
+    font-weight:600;
+    color:#86efac;
+    margin-left:4px;
+  }
+  .result-main .cap{
+    font-size:12px;
+    color:#86efac;
+    margin-top:2px;
+  }
+  .result-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .stat{
+    background:rgba(255,255,255,.04);
+    border-radius:12px;
+    padding:10px 12px;
+  }
+  .stat .k{font-size:11px;color:#86efac;}
+  .stat .v{font-size:17px;font-weight:700;margin-top:2px;white-space:nowrap;}
+  .footer-note{
+    text-align:center;
+    color:var(--muted);
+    font-size:11px;
+    margin-top:6px;
+  }
+  .warn{
+    color:var(--danger);
+    font-size:12px;
+    text-align:center;
+    margin-top:10px;
+    display:none;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>⛽ คำนวณน้ำมัน</h1>
+    <p>ใส่ระยะทาง อัตราสิ้นเปลือง แล้วดูว่าต้องเติมเท่าไหร่</p>
+  </header>
+
+  <div class="card">
+    <div class="mode-toggle">
+      <button id="modeKmL" class="active">กม./ลิตร</button>
+      <button id="modeL100">ลิตร/100กม.</button>
+    </div>
+
+    <div class="field">
+      <label>ระยะทางที่จะวิ่ง <span class="unit">กม.</span></label>
+      <div class="input-row">
+        <div class="stepper"><button data-target="distance" data-step="-10">−</button></div>
+        <input type="number" id="distance" value="100" min="0" step="1" inputmode="decimal">
+        <div class="stepper"><button data-target="distance" data-step="10">+</button></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label id="effLabel">รถวิ่งได้ <span class="unit">กม./ลิตร</span></label>
+      <div class="input-row">
+        <div class="stepper"><button data-target="efficiency" data-step="-0.5">−</button></div>
+        <input type="number" id="efficiency" value="12" min="0.1" step="0.1" inputmode="decimal">
+        <div class="stepper"><button data-target="efficiency" data-step="0.5">+</button></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ราคาน้ำมัน <span class="unit">บาท/ลิตร</span></label>
+      <div class="input-row">
+        <div class="stepper"><button data-target="price" data-step="-1">−</button></div>
+        <input type="number" id="price" value="36" min="0" step="0.5" inputmode="decimal">
+        <div class="stepper"><button data-target="price" data-step="1">+</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card result-card">
+    <div class="result-main">
+      <div class="big" id="litersOut">8.33<small>ลิตร</small></div>
+      <div class="cap">น้ำมันที่ต้องใช้</div>
+    </div>
+    <div class="result-grid">
+      <div class="stat">
+        <div class="k">ค่าน้ำมันโดยประมาณ</div>
+        <div class="v" id="costOut">฿300</div>
+      </div>
+      <div class="stat">
+        <div class="k">ต่อ 1 กม.</div>
+        <div class="v" id="perKmOut">฿3.00</div>
+      </div>
+    </div>
+    <div class="warn" id="warn">กรุณาใส่ตัวเลขให้ครบและมากกว่า 0</div>
+  </div>
+
+  <p class="footer-note">กด "เพิ่มลงหน้าจอหลัก" จากเมนูเบราว์เซอร์ เพื่อใช้งานเหมือนแอป</p>
+</div>
+
+<script>
+const distanceEl = document.getElementById('distance');
+const efficiencyEl = document.getElementById('efficiency');
+const priceEl = document.getElementById('price');
+const litersOut = document.getElementById('litersOut');
+const costOut = document.getElementById('costOut');
+const perKmOut = document.getElementById('perKmOut');
+const warn = document.getElementById('warn');
+const effLabel = document.getElementById('effLabel');
+const modeKmL = document.getElementById('modeKmL');
+const modeL100 = document.getElementById('modeL100');
+
+let mode = localStorage.getItem('fc_mode') || 'kml';
+
+function fmt(n, digits){
+  if(!isFinite(n)) return '-';
+  return n.toLocaleString('th-TH', {minimumFractionDigits:digits, maximumFractionDigits:digits});
+}
+
+function setMode(newMode){
+  mode = newMode;
+  localStorage.setItem('fc_mode', mode);
+  if(mode === 'kml'){
+    modeKmL.classList.add('active');
+    modeL100.classList.remove('active');
+    effLabel.innerHTML = 'รถวิ่งได้ <span class="unit">กม./ลิตร</span>';
+  } else {
+    modeL100.classList.add('active');
+    modeKmL.classList.remove('active');
+    effLabel.innerHTML = 'รถกินน้ำมัน <span class="unit">ลิตร/100กม.</span>';
+  }
+  calculate();
+}
+
+function calculate(){
+  const distance = parseFloat(distanceEl.value);
+  const eff = parseFloat(efficiencyEl.value);
+  const price = parseFloat(priceEl.value);
+
+  const valid = isFinite(distance) && distance > 0 && isFinite(eff) && eff > 0 && isFinite(price) && price >= 0;
+  warn.style.display = valid ? 'none' : 'block';
+  if(!valid){
+    litersOut.innerHTML = '-';
+    costOut.textContent = '-';
+    perKmOut.textContent = '-';
+    return;
+  }
+
+  let liters;
+  if(mode === 'kml'){
+    liters = distance / eff;
+  } else {
+    liters = distance * (eff / 100);
+  }
+  const cost = liters * price;
+  const perKm = cost / distance;
+
+  litersOut.innerHTML = fmt(liters, 2) + '<small>ลิตร</small>';
+  costOut.textContent = '฿' + fmt(cost, 0);
+  perKmOut.textContent = '฿' + fmt(perKm, 2);
+
+  localStorage.setItem('fc_distance', distance);
+  localStorage.setItem('fc_eff', eff);
+  localStorage.setItem('fc_price', price);
+}
+
+document.querySelectorAll('.stepper button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.target);
+    const step = parseFloat(btn.dataset.step);
+    let val = (parseFloat(target.value) || 0) + step;
+    if(val < 0) val = 0;
+    target.value = Math.round(val * 100) / 100;
+    calculate();
+  });
+});
+
+[distanceEl, efficiencyEl, priceEl].forEach(el => el.addEventListener('input', calculate));
+modeKmL.addEventListener('click', () => setMode('kml'));
+modeL100.addEventListener('click', () => setMode('l100'));
+
+const savedD = localStorage.getItem('fc_distance');
+const savedE = localStorage.getItem('fc_eff');
+const savedP = localStorage.getItem('fc_price');
+if(savedD) distanceEl.value = savedD;
+if(savedE) efficiencyEl.value = savedE;
+if(savedP) priceEl.value = savedP;
+
+setMode(mode);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

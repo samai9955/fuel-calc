@@ -317,6 +317,26 @@
     color:var(--muted);
     cursor:not-allowed;
   }
+  .oil-iframe-wrap{
+    width:100%;
+    max-height:60vh;
+    overflow-y:auto;
+    border-radius:12px;
+    background:#fff;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:center;
+  }
+  .oil-iframe-wrap iframe{
+    border:none;
+    display:block;
+  }
+  .oil-note{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    margin:0;
+  }
 </style>
 </head>
 <body>
@@ -358,6 +378,7 @@
         <input type="number" id="price" value="36" min="0" step="0.5" inputmode="decimal">
         <div class="stepper"><button data-target="price" data-step="1">+</button></div>
       </div>
+      <button type="button" id="openOilPriceBtn" class="map-btn">⛽ ดูราคาน้ำมันบางจากวันนี้</button>
     </div>
   </div>
 
@@ -400,6 +421,19 @@
     <div class="leaflet-map" id="leafletMap"></div>
     <div class="map-distance-result" id="mapDistanceResult"></div>
     <button type="button" class="apply-btn" id="applyDistanceBtn" disabled>ใช้ระยะทางนี้</button>
+  </div>
+</div>
+
+<div class="map-modal" id="oilPriceModal">
+  <div class="map-modal-inner">
+    <div class="map-header">
+      <strong>ราคาน้ำมันบางจากวันนี้</strong>
+      <button type="button" class="icon-btn" id="closeOilPriceBtn">✕</button>
+    </div>
+    <div class="oil-iframe-wrap">
+      <iframe id="oilPriceIframe" width="320" height="875" frameborder="0" title="ราคาน้ำมันบางจาก"></iframe>
+    </div>
+    <p class="oil-note">ดูราคาน้ำมันชนิดที่ใช้ แล้วพิมพ์ลงในช่อง "ราคาน้ำมัน" ด้วยตนเอง</p>
   </div>
 </div>
 
@@ -637,6 +671,21 @@ applyDistanceBtn.addEventListener('click', () => {
   calculate();
   mapModal.classList.remove('open');
 });
+
+// ---- Oil price lookup (official Bangchak embeddable widget) ----
+const oilPriceModal = document.getElementById('oilPriceModal');
+const openOilPriceBtn = document.getElementById('openOilPriceBtn');
+const closeOilPriceBtn = document.getElementById('closeOilPriceBtn');
+const oilPriceIframe = document.getElementById('oilPriceIframe');
+
+openOilPriceBtn.addEventListener('click', () => {
+  if(!oilPriceIframe.src){
+    oilPriceIframe.src = 'https://oil-price.bangchak.co.th/BcpOilPrice2/th';
+  }
+  oilPriceModal.classList.add('open');
+});
+
+closeOilPriceBtn.addEventListener('click', () => oilPriceModal.classList.remove('open'));
 </script>
 </body>
 </html>
